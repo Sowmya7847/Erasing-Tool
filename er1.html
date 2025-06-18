@@ -63,6 +63,8 @@
     let history = [];
     let redoStack = [];
     let mode = "upload";
+    let lastX = null;
+    let lastY = null;
 
     function chooseMode(selectedMode) {
       mode = selectedMode;
@@ -110,24 +112,47 @@
 
     canvas.addEventListener("mousedown", (e) => {
       isErasing = true;
-      erase(e);
+      const [x, y] = getCanvasCoords(e);
+      lastX = x;
+      lastY = y;
+      ctx.globalCompositeOperation = "destination-out";
     });
 
     canvas.addEventListener("mousemove", (e) => {
-      if (isErasing) erase(e);
+      if (!isErasing) return;
+      const [x, y] = getCanvasCoords(e);
+      drawEraser(x, y);
+      lastX = x;
+      lastY = y;
     });
 
     canvas.addEventListener("mouseup", () => {
       isErasing = false;
+      lastX = lastY = null;
+      ctx.globalCompositeOperation = "source-over";
       saveState();
     });
 
-    function erase(e) {
+    canvas.addEventListener("mouseleave", () => {
+      isErasing = false;
+      lastX = lastY = null;
+      ctx.globalCompositeOperation = "source-over";
+    });
+
+    function getCanvasCoords(e) {
       const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      return [e.clientX - rect.left, e.clientY - rect.top];
+    }
+
+    function drawEraser(x, y) {
       const size = parseInt(brushSizeInput.value);
-      ctx.clearRect(x - size / 2, y - size / 2, size, size);
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      ctx.lineWidth = size;
+      ctx.beginPath();
+      ctx.moveTo(lastX ?? x, lastY ?? y);
+      ctx.lineTo(x, y);
+      ctx.stroke();
     }
 
     function saveState() {
